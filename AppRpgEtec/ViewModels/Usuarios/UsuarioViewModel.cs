@@ -39,7 +39,8 @@ namespace AppRpgEtec.ViewModels.Usuarios
         public string Login
         {
             get { return login; }
-            set {
+            set
+            {
                 login = value;
                 OnPropertyChanged();
             }
@@ -57,6 +58,11 @@ namespace AppRpgEtec.ViewModels.Usuarios
         }
         #endregion
 
+
+        private CancellationTokenSource _cancelTokenSource;
+        private bool _isCheckingLocation;
+
+        #region Métodos
         public async Task AutenticarUsuario()//Método para autenticar um usuário
         {
             try
@@ -73,6 +79,20 @@ namespace AppRpgEtec.ViewModels.Usuarios
 
                 Usuario uAutenticado = await uService.PostAutenticarUsuarioAsync(u);
 
+                _isCheckingLocation = true;
+                _cancelTokenSource = new CancellationTokenSource();
+                GeolocationRequest request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
+
+                Location location = await Geolocation.Default.GetLocationAsync(request, _cancelTokenSource.Token);
+
+                Usuario uLoc = new Usuario();
+                uLoc.Id = uAutenticado.Id;
+                uLoc.Latitude = location.Latitude;
+                uLoc.Longitude = location.Longitude;
+
+                UsuarioService uServiceLoc = new UsuarioService(uAutenticado.Token);
+                await uService.PutAtualizarLocalizacaoAsync(uLoc);
+
                 if (!string.IsNullOrEmpty(uAutenticado.Token))
                 {
                     string mensagem = $"Bem-Vindo(a) {uAutenticado.Username}.";
@@ -83,6 +103,7 @@ namespace AppRpgEtec.ViewModels.Usuarios
                     Preferences.Set("UsuarioUsername", uAutenticado.Username);
 
                     Preferences.Set("UsuarioPerfil", uAutenticado.Perfil);
+
 
                     await Application.Current.MainPage
                         .DisplayAlert("Informação", mensagem, "Ok");
@@ -107,7 +128,7 @@ namespace AppRpgEtec.ViewModels.Usuarios
 
         }
 
-        #region Métodos
+
         public async Task RegistrarUsuario()//Método para registrar um usuário
         {
             try
@@ -134,7 +155,9 @@ namespace AppRpgEtec.ViewModels.Usuarios
             }
         }
 
-        #endregion
+      
+
+
 
         public async Task DirecionarParaCadastro() //Método para ecibição da view de Cadastro
         {
@@ -150,7 +173,7 @@ namespace AppRpgEtec.ViewModels.Usuarios
             }
         }
 
-
+        #endregion
 
 
     }
